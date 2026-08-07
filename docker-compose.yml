@@ -1,0 +1,18 @@
+services:
+  turnilavoro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: turnilavoro
+    restart: unless-stopped
+    image: turnilavoro:v1.0
+    ports:
+      - "2008:3000"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    environment:
+      - GEMINI_API_KEY=la_tua_chiave_api_qui
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - ./data:/app/data

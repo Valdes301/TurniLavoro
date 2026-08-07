@@ -1,0 +1,6 @@
+{
+  "name": "TurniLavoro - Monitoraggio Turni & Ferie",
+  "description": "App per monitorare turni di lavoro, estrarre orari da PDF o foto con AI, calcolare ore totali e straordinarie, e gestire le ferie.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
