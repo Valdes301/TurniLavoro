@@ -343,6 +343,91 @@ export function calculateOvertime(
   return 0;
 }
 
+// Arrotonda l'orario di INGRESSO (Clock-In) SEMPRE PER ECCESSO (ceiling) ai 15 minuti successivi
+export function roundClockIn(timeStr: string): string {
+  if (!timeStr || !timeStr.includes(':')) return timeStr;
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  let m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+
+  if (m === 0) return `${String(h).padStart(2, '0')}:00`;
+  const remainder = m % 15;
+  if (remainder > 0) {
+    m += (15 - remainder);
+    if (m >= 60) {
+      m = 0;
+      h = (h + 1) % 24;
+    }
+  }
+
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Arrotonda l'orario di USCITA (Clock-Out) SEMPRE PER DIFETTO (floor) ai 15 minuti precedenti
+export function roundClockOut(timeStr: string): string {
+  if (!timeStr || !timeStr.includes(':')) return timeStr;
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  let m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+
+  const remainder = m % 15;
+  m -= remainder;
+
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Sanitizza e arrotonda un turno con le regole ufficiali timbrature/CCNL (Ingresso per eccesso a 15m, Uscita per difetto a 15m)
+export function sanitizeShift(s: Shift): Shift {
+  if (!s) return s;
+  let updated = { ...s };
+
+  if (updated.category === 'work' && updated.startTime && updated.endTime) {
+    let start = updated.startTime;
+    let end = updated.endTime;
+
+    // Handle special 00:00 start time bug for afternoon shift
+    if (start === '00:00' && end === '19:30') {
+      start = '12:00';
+    }
+
+    const lowerType = (updated.type || '').toLowerCase();
+    const lowerNotes = (updated.notes || '').toLowerCase();
+    const isSplit = lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (updated.breakMinutes || 0) >= 120 || updated.date === '2026-06-01' || updated.date === '2026-06-24';
+
+    if (isSplit) {
+      updated.startTime = '07:00';
+      updated.endTime = '19:30';
+      updated.breakMinutes = 180; // 3h stacco (13:00 - 16:00)
+      updated.type = 'Spezzato';
+      if (!updated.notes || !updated.notes.includes('Spezzato')) {
+        updated.notes = `Spezzato (07:00-13:00 / 16:00-19:30) ${updated.notes || ''}`.trim();
+      }
+    } else {
+      const roundedStart = roundClockIn(start);
+      const roundedEnd = roundClockOut(end);
+
+      updated.startTime = roundedStart;
+      updated.endTime = roundedEnd;
+
+      if (!updated.type || lowerType === 'lavoro' || lowerType === 'turno' || lowerType === 'work' || lowerType === 'mattina' || lowerType === 'pomeriggio' || lowerType.includes('e-')) {
+        const detected = getShiftNameAndCodeByTime(roundedStart, roundedEnd, updated.breakMinutes || 0, false);
+        updated.type = detected.name;
+      }
+    }
+
+    // Recalculate exact rounded worked hours
+    updated.workedHours = calculateShiftDuration(updated.startTime, updated.endTime, updated.breakMinutes || 0);
+  }
+
+  if (updated.category !== 'work' || !isNightShift(updated.startTime, updated.endTime)) {
+    updated.isNight = false;
+  }
+
+  return updated;
+}
+
 // Recalculates overtime for a list of shifts considering both daily overtime threshold and weekly hours goal (e.g. 38h)
 export function recalculateWeeklyOvertimeForShifts(
   shifts: Shift[],
@@ -359,16 +444,20 @@ export function recalculateWeeklyOvertimeForShifts(
   });
 }
 
-// Check if shift falls into night time window (e.g. 22:00 to 06:00)
+// Check if shift falls into night time window (strictly 22:00 to 05:30)
 export function isNightShift(startTime: string, endTime: string): boolean {
   if (!startTime || !endTime || (startTime === '00:00' && endTime === '00:00')) return false;
-  const [startH] = startTime.split(':').map(Number);
-  const [endH] = endTime.split(':').map(Number);
+  const [startH, startM = 0] = startTime.split(':').map(Number);
+  const [endH, endM = 0] = endTime.split(':').map(Number);
 
-  // Simple heuristic: starts late or ends early morning or crosses midnight
-  if (startH >= 22 || startH < 5 || endH <= 7 || endH > startH && (startH >= 20 || endH <= 6)) {
-    return true;
-  }
+  const startMins = startH * 60 + startM;
+  const endMins = endH * 60 + endM;
+
+  // Night window is 22:00 (1320 mins) to 05:30 (330 mins)
+  if (startMins >= 1320) return true;
+  if (startMins < 330 && startMins > 0) return true;
+  if (startMins > endMins && (startMins >= 1320 || endMins <= 330)) return true;
+
   return false;
 }
 

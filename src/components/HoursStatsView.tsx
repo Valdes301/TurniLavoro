@@ -37,12 +37,16 @@ interface HoursStatsViewProps {
   selectedMonth: string;
   shifts: Shift[];
   contract: ContractSettings;
+  onEditShift?: (shift: Shift) => void;
+  onOpenAddModal?: (dateIso?: string) => void;
 }
 
 export const HoursStatsView: React.FC<HoursStatsViewProps> = ({
   selectedMonth,
   shifts,
   contract,
+  onEditShift,
+  onOpenAddModal,
 }) => {
   const [, setDeficitTick] = React.useState<number>(0);
 
@@ -65,8 +69,8 @@ export const HoursStatsView: React.FC<HoursStatsViewProps> = ({
   const totalRecuperoStraordinari = monthWeeks.reduce((acc, w) => acc + (w.deficitSplit?.recupero_straordinari || 0), 0);
   const totalNetOvertime = Math.max(0, totalGrossOvertime - totalRecuperoStraordinari);
 
-  const totalNightShifts = monthShifts.filter((s) => s.isNight).length;
-  const totalNightHours = monthShifts.filter((s) => s.isNight).reduce((acc, s) => acc + s.workedHours, 0);
+  const totalNightShifts = monthShifts.filter((s) => s.category === 'work' && s.isNight).length;
+  const totalNightHours = monthShifts.filter((s) => s.category === 'work' && s.isNight).reduce((acc, s) => acc + s.workedHours, 0);
   const totalHolidayShifts = monthShifts.filter((s) => s.isHoliday).length;
   const totalHolidayHours = monthShifts.filter((s) => s.isHoliday).reduce((acc, s) => acc + s.workedHours, 0);
 
@@ -367,6 +371,8 @@ export const HoursStatsView: React.FC<HoursStatsViewProps> = ({
               <WeeklyDeficitSelector
                 week={w}
                 compact={false}
+                onEditShift={onEditShift}
+                onOpenAddModal={onOpenAddModal}
               />
             </div>
           ))}

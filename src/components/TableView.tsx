@@ -322,14 +322,29 @@ export const TableView: React.FC<TableViewProps> = ({
                         <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate">
                           {name}
                         </span>
-                        {shift.isNight && <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0 ml-auto" />}
+                        {shift.category === 'work' && shift.isNight && <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0 ml-auto" />}
                       </div>
 
                       {/* Time & Hours Banner */}
                       <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800/80 font-mono text-xs">
                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
                           <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span className="font-semibold">{shift.startTime} - {shift.endTime}</span>
+                          {(() => {
+                            const lowerType = (shift.type || '').toLowerCase();
+                            const lowerNotes = (shift.notes || '').toLowerCase();
+                            const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                            if (isSplit) {
+                              let t1 = '07:00-13:00';
+                              let t2 = '16:00-19:30';
+                              const match = shift.notes?.match(/(\d{2}:\d{2}-\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}-\d{2}:\d{2})/);
+                              if (match) {
+                                t1 = match[1];
+                                t2 = match[2];
+                              }
+                              return <span className="font-bold text-violet-800 dark:text-violet-300">{t1} / {t2}</span>;
+                            }
+                            return <span className="font-semibold">{shift.startTime} - {shift.endTime}</span>;
+                          })()}
                         </div>
                         <span className="font-extrabold text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                           {formatHours(shift.workedHours)}
@@ -352,12 +367,18 @@ export const TableView: React.FC<TableViewProps> = ({
                           </span>
                         )}
 
-                        {shift.breakMinutes ? (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1">
-                            <Coffee className="w-3 h-3" />
-                            <span>{shift.breakMinutes}m pausa</span>
-                          </span>
-                        ) : null}
+                        {(() => {
+                          const lowerType = (shift.type || '').toLowerCase();
+                          const lowerNotes = (shift.notes || '').toLowerCase();
+                          const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                          if (isSplit || !shift.breakMinutes) return null;
+                          return (
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1">
+                              <Coffee className="w-3 h-3" />
+                              <span>{shift.breakMinutes}m pausa</span>
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {shift.notes && (
@@ -444,7 +465,7 @@ export const TableView: React.FC<TableViewProps> = ({
                               {code}
                             </span>
                             <span className="truncate max-w-[150px]">{name}</span>
-                            {shift.isNight && <Moon className="w-3 h-3 text-indigo-500 shrink-0" />}
+                            {shift.category === 'work' && shift.isNight && <Moon className="w-3 h-3 text-indigo-500 shrink-0" />}
                           </div>
                         </td>
                       )}
@@ -474,13 +495,34 @@ export const TableView: React.FC<TableViewProps> = ({
 
                       {visibleColumns.time && (
                         <td className="p-3 text-slate-600 dark:text-slate-300 font-mono whitespace-nowrap">
-                          {shift.startTime} - {shift.endTime}
+                          {(() => {
+                            const lowerType = (shift.type || '').toLowerCase();
+                            const lowerNotes = (shift.notes || '').toLowerCase();
+                            const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                            if (isSplit) {
+                              let t1 = '07:00-13:00';
+                              let t2 = '16:00-19:30';
+                              const match = shift.notes?.match(/(\d{2}:\d{2}-\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}-\d{2}:\d{2})/);
+                              if (match) {
+                                t1 = match[1];
+                                t2 = match[2];
+                              }
+                              return <span className="font-bold text-violet-800 dark:text-violet-300">{t1} / {t2}</span>;
+                            }
+                            return `${shift.startTime} - ${shift.endTime}`;
+                          })()}
                         </td>
                       )}
 
                       {visibleColumns.break && (
                         <td className="p-3 text-slate-500 dark:text-slate-400">
-                          {shift.breakMinutes ? `${shift.breakMinutes}m` : '-'}
+                          {(() => {
+                            const lowerType = (shift.type || '').toLowerCase();
+                            const lowerNotes = (shift.notes || '').toLowerCase();
+                            const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                            if (isSplit) return '-';
+                            return shift.breakMinutes ? `${shift.breakMinutes}m` : '-';
+                          })()}
                         </td>
                       )}
 

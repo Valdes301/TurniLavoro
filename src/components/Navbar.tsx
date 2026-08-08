@@ -19,7 +19,8 @@ import {
   Receipt,
   Printer,
   Menu,
-  X
+  X,
+  Database
 } from 'lucide-react';
 import { ViewMode } from '../types';
 
@@ -163,15 +164,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>+ Turno</span>
             </button>
 
-            {/* 2. Carica */}
+            {/* 2. Carica Orario AI */}
             <button
               onClick={() => setCurrentView('upload')}
               className="flex-1 sm:flex-none flex items-center justify-center gap-1 px-1.5 sm:px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/80 dark:border-indigo-800 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all cursor-pointer whitespace-nowrap"
-              title="Carica orario da PDF o Foto"
+              title="Carica orario AI da PDF o Foto"
             >
               <FileUp className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span className="hidden md:inline">Carica Orario</span>
-              <span className="md:hidden">Carica</span>
+              <span className="hidden md:inline">Carica Orario AI</span>
+              <span className="md:hidden">Carica AI</span>
             </button>
 
             {/* 3. Orari ON/OFF */}
@@ -345,86 +346,157 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               </div>
 
-              {/* Navigation Links - Expanded Visible Area */}
-              <div className="p-2 sm:p-2.5 overflow-y-auto space-y-1 flex-1 min-h-0 scrollbar-thin">
-                <div className="px-2 py-0.5 text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  Sezioni Applicazione
+              {/* Navigation Links - Categorized Sections */}
+              <div className="p-2 sm:p-2.5 overflow-y-auto space-y-3 flex-1 min-h-0 scrollbar-thin">
+                
+                {/* Category 1: Pianificazione */}
+                <div className="space-y-1">
+                  <div className="px-2 py-0.5 text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    📅 Pianificazione & Turni
+                  </div>
+                  {[
+                    { id: 'calendar', label: 'Calendario Turni', desc: 'Vista mensile e settimanale', icon: Calendar, color: 'text-blue-600 dark:text-blue-400' },
+                    { id: 'table', label: 'Tabella Elenco Turni', desc: 'Vista a tabella dettagliata e filtri', icon: List, color: 'text-sky-600 dark:text-sky-400' },
+                    { id: 'stats', label: 'Ore & Straordinari', desc: 'Statistiche e riepiloghi settimanali', icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
+                  ].map((item) => {
+                    const IconComp = item.icon;
+                    const isActive = currentView === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setCurrentView(item.id as ViewMode);
+                          setIsNavDrawerOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 shadow-2xs font-bold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 ' + item.color}`}>
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold truncate leading-tight">{item.label}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate leading-tight">{item.desc}</div>
+                        </div>
+                        {isActive && (
+                          <div className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                {[
-                  { id: 'calendar', label: 'Calendario Turni', desc: 'Vista mensile e settimanale', icon: Calendar, color: 'text-blue-600 dark:text-blue-400' },
-                  { id: 'table', label: 'Elenco Turni', desc: 'Tabella dettagliata e filtri', icon: List, color: 'text-sky-600 dark:text-sky-400' },
-                  { id: 'stats', label: 'Ore & Straordinari', desc: 'Statistiche e riepiloghi', icon: Clock, color: 'text-purple-600 dark:text-purple-400' },
-                  { id: 'ferie', label: 'Ferie e Permessi', desc: 'Saldo ferie e ROL', icon: Palmtree, color: 'text-emerald-600 dark:text-emerald-400' },
-                  { id: 'payslip', label: 'Busta Paga', desc: 'Analisi in busta paga', icon: Receipt, color: 'text-amber-600 dark:text-amber-400' },
-                  { id: 'reports', label: 'Stampe & Report', desc: 'Cartellini, PDF, CSV, JSON', icon: Printer, color: 'text-blue-600 dark:text-blue-400' },
-                  { id: 'settings', label: 'Contratto & Presets', desc: 'Soglie orarie e turni', icon: Settings, color: 'text-indigo-600 dark:text-indigo-400' },
-                  { id: 'docker', label: 'Guida Docker & Pi', desc: 'Installazione e hosting', icon: Server, color: 'text-cyan-600 dark:text-cyan-400' },
-                ].map((item) => {
-                  const IconComp = item.icon;
-                  const isActive = currentView === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setCurrentView(item.id as ViewMode);
-                        setIsNavDrawerOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 sm:py-2 rounded-xl text-left transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 shadow-2xs'
-                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
-                      }`}
-                    >
-                      <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 ' + item.color}`}>
-                        <IconComp className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold truncate leading-tight">{item.label}</div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate leading-tight">{item.desc}</div>
-                      </div>
-                      {isActive && (
-                        <div className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
+                {/* Category 2: Presenze & Compensi */}
+                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <div className="px-2 py-0.5 text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    🌴 Ferie & Busta Paga
+                  </div>
+                  {[
+                    { id: 'ferie', label: 'Ferie e Permessi', desc: 'Saldo ferie, ROL e storico goduti', icon: Palmtree, color: 'text-emerald-600 dark:text-emerald-400' },
+                    { id: 'payslip', label: 'Busta Paga', desc: 'Analisi competenze e trattenute', icon: Receipt, color: 'text-amber-600 dark:text-amber-400' },
+                  ].map((item) => {
+                    const IconComp = item.icon;
+                    const isActive = currentView === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setCurrentView(item.id as ViewMode);
+                          setIsNavDrawerOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 shadow-2xs font-bold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 ' + item.color}`}>
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold truncate leading-tight">{item.label}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate leading-tight">{item.desc}</div>
+                        </div>
+                        {isActive && (
+                          <div className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                <div className="pt-1">
+                {/* Category 3: Report & Impostazioni */}
+                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <div className="px-2 py-0.5 text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    ⚙️ Report & Configurazione
+                  </div>
+                  {[
+                    { id: 'reports', label: 'Backup, Ripristino & Report', desc: 'Salvataggio JSON, PDF cartellino e CSV', icon: Database, color: 'text-emerald-600 dark:text-emerald-400' },
+                    { id: 'settings', label: 'Contratto & Presets', desc: 'Soglie orarie, festivi e negozi', icon: Settings, color: 'text-indigo-600 dark:text-indigo-400' },
+                    { id: 'docker', label: 'Guida Docker & Pi', desc: 'Installazione, server e backup', icon: Server, color: 'text-cyan-600 dark:text-cyan-400' },
+                  ].map((item) => {
+                    const IconComp = item.icon;
+                    const isActive = currentView === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setCurrentView(item.id as ViewMode);
+                          setIsNavDrawerOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isActive
+                            ? 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 shadow-2xs font-bold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 border border-transparent'
+                        }`}
+                      >
+                        <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 ' + item.color}`}>
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold truncate leading-tight">{item.label}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal truncate leading-tight">{item.desc}</div>
+                        </div>
+                        {isActive && (
+                          <div className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+              </div>
+
+              {/* Footer Quick Actions - Compact & Streamlined */}
+              <div className="p-2.5 sm:p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/80 space-y-2 shrink-0">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => {
+                      setIsNavDrawerOpen(false);
+                      onOpenAddModal();
+                    }}
+                    className="flex items-center justify-center gap-1 py-1.5 px-2 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-xs transition-all cursor-pointer truncate"
+                    title="Aggiungi nuovo turno"
+                  >
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">Nuovo Turno</span>
+                  </button>
+
                   <button
                     onClick={() => {
                       setCurrentView('upload');
                       setIsNavDrawerOpen(false);
                     }}
-                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 sm:py-2 rounded-xl text-left transition-all cursor-pointer ${
-                      currentView === 'upload'
-                        ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700'
-                        : 'text-indigo-700 dark:text-indigo-300 bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-900/60'
-                    }`}
+                    className="flex items-center justify-center gap-1 py-1.5 px-2 bg-indigo-600 text-white font-bold text-xs rounded-lg hover:bg-indigo-700 shadow-xs transition-all cursor-pointer truncate"
+                    title="Carica orario AI da PDF o Foto"
                   >
-                    <div className="p-1.5 rounded-lg bg-indigo-600 text-white shrink-0">
-                      <FileUp className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold leading-tight">Carica Orario AI</div>
-                      <div className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 font-normal truncate leading-tight">Da PDF o foto turni</div>
-                    </div>
+                    <FileUp className="w-3.5 h-3.5 shrink-0 text-indigo-200" />
+                    <span className="truncate">Carica Orario AI</span>
                   </button>
                 </div>
-              </div>
-
-              {/* Footer Quick Actions - Compact & Streamlined */}
-              <div className="p-2.5 sm:p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-800/80 space-y-2 shrink-0">
-                <button
-                  onClick={() => {
-                    setIsNavDrawerOpen(false);
-                    onOpenAddModal();
-                  }}
-                  className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 shadow-xs transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Aggiungi Nuovo Turno</span>
-                </button>
 
                 {/* Export Data Section with 4 Download/Export Options */}
                 <div className="space-y-1 pt-1 border-t border-slate-200/80 dark:border-slate-700/80">

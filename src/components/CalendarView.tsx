@@ -12,6 +12,8 @@ interface CalendarViewProps {
   onSelectDate: (dateStr: string) => void;
   onEditShift: (shift: Shift) => void;
   onOpenSidebar?: () => void;
+  onOpenAddModal?: (dateIso?: string) => void;
+  onViewFullTable?: () => void;
 }
 
 export const CalendarView: React.FC<CalendarViewProps> = ({
@@ -22,6 +24,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   onSelectDate,
   onEditShift,
   onOpenSidebar,
+  onOpenAddModal,
+  onViewFullTable,
 }) => {
   const [calendarMode, setCalendarMode] = useState<'monthly' | 'weekly'>('monthly');
   const [activeWeekIndex, setActiveWeekIndex] = useState<number>(0);
@@ -101,7 +105,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     let barColor = 'bg-blue-500';
     if (shift.category === 'straordinario') barColor = 'bg-purple-500';
-    if (shift.isNight) barColor = 'bg-indigo-600';
+    if (shift.category === 'work' && shift.isNight) barColor = 'bg-indigo-600';
 
     return (
       <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
@@ -437,16 +441,42 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                               <span className="font-extrabold text-[10px] sm:text-xs px-1 py-0.2 rounded bg-black/10 dark:bg-white/15 tracking-tight">
                                 {code}
                               </span>
-                              {shift.isNight && <Moon className="w-2.5 h-2.5 text-indigo-500 shrink-0 ml-auto" />}
+                              {shift.category === 'work' && shift.isNight && <Moon className="w-2.5 h-2.5 text-indigo-500 shrink-0 ml-auto" />}
                             </div>
 
                             {shift.category !== 'riposo' && (
                               <div className="text-[7.5px] sm:text-[10px] opacity-95 mt-0.5 font-mono leading-tight">
                                 {showMobileTimes && (
                                   <div className="font-semibold text-[7.5px] sm:text-[10px] tracking-tighter sm:tracking-tight font-mono">
-                                    <span className="block sm:inline">{shift.startTime}</span>
-                                    <span className="hidden sm:inline">-</span>
-                                    <span className="block sm:inline">{shift.endTime}</span>
+                                    {(() => {
+                                      const lowerType = (shift.type || '').toLowerCase();
+                                      const lowerNotes = (shift.notes || '').toLowerCase();
+                                      const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                                      
+                                      if (isSplit) {
+                                        let t1 = '07:00-13:00';
+                                        let t2 = '16:00-19:30';
+                                        const match = shift.notes?.match(/(\d{2}:\d{2}-\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}-\d{2}:\d{2})/);
+                                        if (match) {
+                                          t1 = match[1];
+                                          t2 = match[2];
+                                        }
+                                        return (
+                                          <div className="text-[7px] sm:text-[9.5px] leading-tight font-bold text-violet-800 dark:text-violet-300">
+                                            <span className="block">{t1}</span>
+                                            <span className="block">{t2}</span>
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <>
+                                          <span className="block sm:inline">{shift.startTime}</span>
+                                          <span className="hidden sm:inline">-</span>
+                                          <span className="block sm:inline">{shift.endTime}</span>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                                 <div className="font-bold text-[8px] sm:text-[10px] text-right sm:text-left mt-0.5 opacity-90 whitespace-nowrap">
@@ -539,6 +569,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       <WeeklyDeficitSelector
                         week={w}
                         compact={true}
+                        onEditShift={onEditShift}
+                        onOpenAddModal={onOpenAddModal || onSelectDate}
+                        onViewFullTable={onViewFullTable}
                       />
                     </div>
                   </div>
@@ -701,13 +734,29 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   </span>
                                   <span className="truncate" title={name}>{name}</span>
                                 </div>
-                                {shift.isNight && <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                                {shift.category === 'work' && shift.isNight && <Moon className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
                               </div>
 
                               {shift.category !== 'riposo' && shift.category !== 'ferie' && (
-                                <div className="flex items-center justify-between text-xs font-mono pt-1 border-t border-black/5 dark:border-white/10">
-                                  <span className="font-semibold">{shift.startTime} - {shift.endTime}</span>
-                                  <span className="font-bold">{shift.workedHours}h</span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono pt-1 border-t border-black/5 dark:border-white/10 gap-0.5">
+                                  {(() => {
+                                    const lowerType = (shift.type || '').toLowerCase();
+                                    const lowerNotes = (shift.notes || '').toLowerCase();
+                                    const isSplit = code === 'SP' || lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (shift.breakMinutes || 0) >= 120;
+                                    
+                                    if (isSplit) {
+                                      let t1 = '07:00-13:00';
+                                      let t2 = '16:00-19:30';
+                                      const match = shift.notes?.match(/(\d{2}:\d{2}-\d{2}:\d{2})\s*\/\s*(\d{2}:\d{2}-\d{2}:\d{2})/);
+                                      if (match) {
+                                        t1 = match[1];
+                                        t2 = match[2];
+                                      }
+                                      return <span className="font-semibold text-violet-800 dark:text-violet-300">{t1} / {t2}</span>;
+                                    }
+                                    return <span className="font-semibold">{shift.startTime} - {shift.endTime}</span>;
+                                  })()}
+                                  <span className="font-bold">{formatHours(shift.workedHours)}</span>
                                 </div>
                               )}
 

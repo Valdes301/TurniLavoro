@@ -25,7 +25,10 @@ import {
   Check,
   SlidersHorizontal,
   Sliders,
-  ShieldCheck
+  ShieldCheck,
+  Upload,
+  RotateCcw,
+  Database
 } from 'lucide-react';
 import { Shift, ContractSettings, VacationSettings, SavedPayslipRecord } from '../types';
 import { 
@@ -42,6 +45,9 @@ interface ReportsPrintViewProps {
   shifts: Shift[];
   contract: ContractSettings;
   vacationSettings: VacationSettings;
+  onExportBackup?: () => void;
+  onImportBackup?: (jsonStr: string) => void;
+  onResetDemoData?: () => void;
 }
 
 export interface PrintConfigOptions {
@@ -61,8 +67,25 @@ export const ReportsPrintView: React.FC<ReportsPrintViewProps> = ({
   shifts,
   contract,
   vacationSettings,
+  onExportBackup,
+  onImportBackup,
+  onResetDemoData,
 }) => {
   const [reportTab, setReportTab] = useState<'timesheet' | 'overtime' | 'salary' | 'vacation' | 'custom'>('timesheet');
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onImportBackup) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          onImportBackup(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
   
   // Modal state for PDF print customization
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -113,11 +136,16 @@ export const ReportsPrintView: React.FC<ReportsPrintViewProps> = ({
     monthShifts.forEach((s) => {
       worked += s.workedHours;
       overtimeGross += s.overtimeHours;
-      if (s.isNight) nightHours += s.workedHours;
+      if (s.category === 'work' && s.isNight) nightHours += s.workedHours;
       if (s.isHoliday) holidayHours += s.workedHours;
       if (s.category === 'ferie') ferieDays += 1;
       if (s.category === 'permesso') permessoHours += s.workedHours;
-      breakMinutes += s.breakMinutes || 0;
+      const lowerType = (s.type || '').toLowerCase();
+      const lowerNotes = (s.notes || '').toLowerCase();
+      const isSplit = lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (s.breakMinutes || 0) >= 120 || s.date === '2026-06-01' || s.date === '2026-06-24';
+      if (!isSplit) {
+        breakMinutes += s.breakMinutes || 0;
+      }
     });
 
     const netOvertimeTotal = weekSummaries.reduce((acc, w) => acc + w.netOvertimeHours, 0);
@@ -144,7 +172,7 @@ export const ReportsPrintView: React.FC<ReportsPrintViewProps> = ({
       ferieDays,
       permessoHours,
       breakMinutes,
-      breakHoursStr: (breakMinutes / 60).toFixed(1),
+      breakHoursStr: breakMinutes > 0 ? (breakMinutes < 60 ? `${breakMinutes}m` : `${Math.floor(breakMinutes / 60)}h ${breakMinutes % 60 > 0 ? `${breakMinutes % 60}m` : ''}`.trim()) : '0m',
       activeStores,
       daysWorkedCount: monthShifts.filter((s) => s.category === 'work' || s.category === 'straordinario').length,
     };
@@ -483,6 +511,56 @@ export const ReportsPrintView: React.FC<ReportsPrintViewProps> = ({
             </button>
           </div>
 
+        </div>
+      </div>
+
+      {/* BACKUP & RESTORE QUICK PANEL */}
+      <div className="no-print bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-xl">
+            <Database className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <span>Backup Completo & Ripristino Dati</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Esporta o importa il file di backup completo JSON per trasferire o ripristinare tutti i tuoi turni e impostazioni.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <button
+            type="button"
+            onClick={onExportBackup || handleDownloadJSON}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Esporta Backup</span>
+          </button>
+
+          <label className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold text-xs rounded-xl cursor-pointer transition-colors">
+            <Upload className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span>Importa Backup</span>
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+          </label>
+
+          {onResetDemoData && (
+            <button
+              type="button"
+              onClick={onResetDemoData}
+              className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
+              title="Ripristina dati di esempio"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1079,7 +1157,13 @@ export const ReportsPrintView: React.FC<ReportsPrintViewProps> = ({
                             {s.category === 'riposo' ? 'RIPOSO' : `${s.startTime} - ${s.endTime}`}
                           </td>
                           <td className="p-2.5 text-center text-slate-500 font-mono">
-                            {s.breakMinutes > 0 ? `${s.breakMinutes}m` : '-'}
+                            {(() => {
+                              const lowerType = (s.type || '').toLowerCase();
+                              const lowerNotes = (s.notes || '').toLowerCase();
+                              const isSplit = lowerType.includes('spezzato') || lowerNotes.includes('spezzato') || (s.breakMinutes || 0) >= 120;
+                              if (isSplit) return '-';
+                              return s.breakMinutes > 0 ? `${s.breakMinutes}m` : '-';
+                            })()}
                           </td>
                           <td className="p-2.5 text-right font-bold text-slate-900 dark:text-slate-100 font-mono">
                             {s.workedHours > 0 ? `${formatHours(s.workedHours)}` : '-'}

@@ -22,6 +22,9 @@ interface SidebarProps {
   vacationSettings: VacationSettings;
   isOpen: boolean;
   onClose: () => void;
+  onEditShift?: (shift: Shift) => void;
+  onOpenAddModal?: (dateIso?: string) => void;
+  onViewFullTable?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,6 +34,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   vacationSettings,
   isOpen,
   onClose,
+  onEditShift,
+  onOpenAddModal,
+  onViewFullTable,
 }) => {
   // Compute Monday-Sunday weeks for the month
   const weeks = getWeeksForMonth(selectedMonth, shifts, contract.weeklyHoursGoal);
@@ -199,6 +205,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <WeeklyDeficitSelector
                         week={w}
                         compact={true}
+                        onEditShift={onEditShift}
+                        onOpenAddModal={onOpenAddModal}
+                        onViewFullTable={onViewFullTable}
                       />
                     </div>
                   );
@@ -211,59 +220,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
 
-          {/* Monthly Totals Card */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Totale Mese ({monthName.split(' ')[0]})</span>
-              </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-full">
+          {/* Combined Month & Balances Summary Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span>Riepilogo Mese & Saldi</span>
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 rounded-full">
                 {monthProgressPct}% Target
               </span>
-            </h3>
-
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Ore Lavorate</span>
-                <span className="text-base font-extrabold text-slate-900 dark:text-slate-100">{formatHours(totalWorkedMonth)}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">/ {monthTarget}h</span>
-              </div>
-
-              <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Straordinario</span>
-                <span className="text-base font-extrabold text-purple-700 dark:text-purple-400">+{formatOvertime(totalOvertimeMonth)}</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">nel mese</span>
-              </div>
             </div>
-          </div>
 
-          {/* Ferie & ROL Balances */}
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <Palmtree className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-              <span>Saldo Ferie & Permessi</span>
-            </h3>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
-                <div>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block">Ferie Residue</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Godute: {usedFerie} gg</span>
-                </div>
-                <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                  {remainingFerie} gg
-                </span>
+            <div className="grid grid-cols-2 gap-2 text-left">
+              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Lavorate</span>
+                <span className="text-sm font-extrabold text-slate-900 dark:text-slate-100">{formatHours(totalWorkedMonth)}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">/ {monthTarget}h target</span>
               </div>
 
-              <div className="flex items-center justify-between p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
-                <div>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block">Permessi ROL Residui</span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">Utilizzate: {formatHours(usedRol)}</span>
-                </div>
-                <span className="text-sm font-extrabold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/80 px-2.5 py-1 rounded-lg border border-pink-200 dark:border-pink-800">
-                  {formatHours(remainingRol)}
+              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-purple-600 dark:text-purple-400 uppercase font-bold block">Straordinario</span>
+                <span className="text-sm font-extrabold text-purple-700 dark:text-purple-400">+{formatOvertime(totalOvertimeMonth)}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">accumulato</span>
+              </div>
+
+              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-teal-600 dark:text-teal-400 uppercase font-bold block flex items-center gap-1">
+                  <Palmtree className="w-3 h-3 text-teal-500" /> Ferie
                 </span>
+                <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{remainingFerie} gg</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Godute: {usedFerie}gg</span>
+              </div>
+
+              <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-pink-600 dark:text-pink-400 uppercase font-bold block flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-pink-500" /> Permessi ROL
+                </span>
+                <span className="text-sm font-extrabold text-pink-600 dark:text-pink-400">{formatHours(remainingRol)}</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 block">Usate: {formatHours(usedRol)}</span>
               </div>
             </div>
           </div>

@@ -13,7 +13,12 @@ import {
   generateCSVReport,
   getShiftNameAndCodeByTime,
   recalculateWeeklyOvertimeForShifts,
-  formatDateToIso
+  formatDateToIso,
+  isNightShift,
+  roundClockIn,
+  roundClockOut,
+  calculateShiftDuration,
+  sanitizeShift
 } from './utils/shiftUtils';
 import { getInitialShifts, INITIAL_VACATION } from './data/initialData';
 
@@ -84,30 +89,26 @@ export default function App() {
 
   // Persistence States
   const [shifts, setShifts] = useState<Shift[]>(() => {
-    let parsedShifts: Shift[] = getInitialShifts();
+    let parsedShifts: Shift[] = [];
     const saved = localStorage.getItem('tl_shifts_v1');
     if (saved) {
       try { parsedShifts = JSON.parse(saved); } catch (e) { console.error(e); }
     }
     
-    // Automatically migrate old shift names (e.g. "Mattina", "Lavoro", "Turno") to new rules
-    return parsedShifts.map((s) => {
-      if (s.category === 'work') {
-        const lowerType = (s.type || '').toLowerCase();
-        if (
-          lowerType === 'mattina' ||
-          lowerType === 'lavoro' ||
-          lowerType === 'turno' ||
-          lowerType === 'mattino' ||
-          lowerType === 'pomeriggio'
-        ) {
-          const isSplit = (s.notes || '').toLowerCase().includes('spezzato') || (s.breakMinutes || 0) >= 120;
-          const detected = getShiftNameAndCodeByTime(s.startTime, s.endTime, s.breakMinutes, isSplit);
-          return { ...s, type: detected.name };
-        }
-      }
-      return s;
-    });
+    const initialShifts = getInitialShifts();
+    const shiftMap = new Map<string, Shift>();
+
+    // Load initial canonical shifts
+    for (const initShift of initialShifts) {
+      shiftMap.set(initShift.id, sanitizeShift(initShift));
+    }
+
+    // Merge saved shifts from localStorage with official CCNL timbrature rounding
+    for (const s of parsedShifts) {
+      shiftMap.set(s.id, sanitizeShift(s));
+    }
+
+    return Array.from(shiftMap.values());
   });
 
   const [contract, setContract] = useState<ContractSettings>(() => {
@@ -160,7 +161,7 @@ export default function App() {
           let hasDataInDb = false;
 
           if (db.shifts && Array.isArray(db.shifts) && db.shifts.length > 0) {
-            setShifts(db.shifts);
+            setShifts(db.shifts.map(sanitizeShift));
             hasDataInDb = true;
           }
           if (db.contract && typeof db.contract === 'object') {
@@ -548,6 +549,9 @@ export default function App() {
               shifts={processedShifts}
               contract={contract}
               vacationSettings={vacationSettings}
+              onExportBackup={handleExportBackup}
+              onImportBackup={handleImportBackup}
+              onResetDemoData={handleResetDemoData}
             />
           )}
 

@@ -74,7 +74,7 @@ export const ShiftFormModal: React.FC<ShiftFormModalProps> = ({
   // Computed values
   const workedHours = calculateShiftDuration(startTime, endTime, breakMinutes);
   const overtimeHours = calculateOvertime(workedHours, category, contract.overtimeThresholdDaily);
-  const isNight = isNightShift(startTime, endTime);
+  const isNight = category === 'work' && isNightShift(startTime, endTime);
   const isHoliday = isItalianNationalHoliday(date);
 
   const applyPreset = (preset: ShiftPreset) => {

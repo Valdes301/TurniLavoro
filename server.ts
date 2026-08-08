@@ -470,6 +470,34 @@ SELEZIONE DEL DIPENDENTE/PERSONA:
 - Se l'utente ha specificato un Cognome/Nome (${employeeName ? `"${employeeName}"` : 'NON specificato'}), CERCA RIGOROSAMENTE LA RIGA CORRISPONDENTE a quel cognome/nome nella tabella!
 - Se l'utente NON ha specificato un cognome, estrai i turni per il PRIMO dipendente visibile nella tabella ed indica chiaramente il cognome estratto nel campo "summaryNote".
 
+REGOLE RIGOROSE PER TIMBRATURE E STAMPA CARTELLINI (INGRESSI E-hh:mm / USCITE U-hh:mm):
+1. ARROTONDAMENTO INGRESSO (E / Entrata):
+   - Arrotonda SEMPRE PER ECCESSO (ceiling) ai 15 minuti successivi (:00, :15, :30, :45).
+   - Esempi:
+     * 06:30 -> 06:30
+     * da 06:31 a 06:45 -> 06:45
+     * da 06:46 a 07:00 -> 07:00 (es. 06:49 -> 07:00, 06:51 -> 07:00)
+     * 15:58 -> 16:00
+
+2. ARROTONDAMENTO USCITA (U / Uscita):
+   - Arrotonda SEMPRE PER DIFETTO (floor) ai 15 minuti precedenti (:00, :15, :30, :45).
+   - Esempi:
+     * da 13:00 a 13:14 -> 13:00 (es. 13:08 -> 13:00, 13:05 -> 13:00)
+     * da 19:30 a 19:44 -> 19:30 (es. 19:38 -> 19:30, 19:41 -> 19:30)
+     * da 19:45 a 19:59 -> 19:45
+
+3. TURNO SPEZZATO CON DOPPIA TIMBRATURA (es. E-06:49 U-13:08 E-15:58 U-19:41):
+   - Arrotonda E1 per eccesso -> E1_arr (es. 06:49 -> 07:00).
+   - Arrotonda U1 per difetto -> U1_arr (es. 13:08 -> 13:00).
+   - Arrotonda E2 per eccesso -> E2_arr (es. 15:58 -> 16:00).
+   - Arrotonda U2 per difetto -> U2_arr (es. 19:41 -> 19:30).
+   - Imposta startTime = E1_arr ("07:00").
+   - Imposta endTime = U2_arr ("19:30").
+   - Imposta breakMinutes = minuti di stacco tra U1_arr ed E2_arr (da 13:00 a 16:00 = 180 minuti).
+   - Imposta type = "SP - Spezzato", category = "work".
+   - Imposta notes = "Spezzato (07:00-13:00 / 16:00-19:30)".
+   - Risultato ore lavorate netti: 12.5 ore totali - 3.0 ore di stacco = 9.5 ore lavorate.
+
 REGOLE PER GLI ORARI, PAUSE E CATEGORIE:
 - Orari visibili "Dalle - Alle" (es. 06:30 12:15): inserisci startTime "06:30" e endTime "12:15".
 - STACCHI E PAUSE BREVI (es. 15 MINUTI): Se nello stesso giorno il dipendente ha due o più sotto-orari separati da uno stacco breve (es. 15 o 30 minuti, ad esempio 06:30-10:15 e 10:30-13:00):

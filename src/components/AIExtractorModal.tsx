@@ -22,7 +22,11 @@ import {
   formatDateToIso,
   getSavedStores,
   addSavedStore,
-  deleteSavedStore
+  deleteSavedStore,
+  isNightShift,
+  roundClockIn,
+  roundClockOut,
+  sanitizeShift
 } from '../utils/shiftUtils';
 
 interface AIExtractorModalProps {
@@ -163,7 +167,28 @@ export const AIExtractorModal: React.FC<AIExtractorModalProps> = ({
         throw new Error(data.error || `Errore durante l'estrazione dei turni (${response.status}).`);
       }
 
-      setCandidates(data.shifts || []);
+      const sanitizedCandidates = (data.shifts || []).map((c: ExtractedShiftCandidate) => {
+        let startTime = c.startTime ? roundClockIn(c.startTime) : '08:00';
+        let endTime = c.endTime ? roundClockOut(c.endTime) : '16:00';
+        let breakMins = c.breakMinutes ?? 0;
+        let type = c.type || '';
+
+        if (type.toLowerCase().includes('spezzato') || breakMins >= 120) {
+          if (!type || type.toLowerCase().includes('lavoro') || type.toLowerCase().includes('turno')) {
+            type = 'SP - Spezzato';
+          }
+        }
+
+        return {
+          ...c,
+          startTime,
+          endTime,
+          breakMinutes: breakMins,
+          type,
+        };
+      });
+
+      setCandidates(sanitizedCandidates);
       setSummaryNote(data.summaryNote || 'Turni analizzati con successo con l\'IA!');
       if (data.monthDetected) {
         setReferenceMonth(data.monthDetected);
@@ -207,7 +232,7 @@ export const AIExtractorModal: React.FC<AIExtractorModalProps> = ({
       const isGeneric = !rawType || /^(lavoro|turno|work|lavoro ordinario|turno normale|ordinario)$/i.test(rawType);
       const finalShiftType = !isGeneric ? rawType : auto.name;
 
-      return {
+      const rawShift: Shift = {
         id: `extracted-${Date.now()}-${i}`,
         date: c.date,
         type: finalShiftType,
@@ -217,11 +242,13 @@ export const AIExtractorModal: React.FC<AIExtractorModalProps> = ({
         breakMinutes: breakMins,
         workedHours: worked,
         overtimeHours: overtime,
-        isNight: c.startTime >= '22:00' || c.endTime <= '07:00',
+        isNight: isNightShift(c.startTime || '08:00', c.endTime || '16:00'),
         isHoliday: false,
         location: c.location || defaultLocation || undefined,
         notes: c.notes || 'Estratto con AI da foto/PDF',
       };
+
+      return sanitizeShift(rawShift);
     });
 
     onShiftsExtracted(finalShifts, replaceMode);
