@@ -449,7 +449,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                     <span className="block sm:inline">{shift.endTime}</span>
                                   </div>
                                 )}
-                                <div className="font-bold text-[8px] sm:text-[10px] text-right sm:text-left mt-0.5 opacity-90">
+                                <div className="font-bold text-[8px] sm:text-[10px] text-right sm:text-left mt-0.5 opacity-90 whitespace-nowrap">
                                   {formatHours(shift.workedHours)}
                                 </div>
                               </div>

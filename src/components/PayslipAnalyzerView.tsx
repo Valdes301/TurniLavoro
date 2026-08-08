@@ -25,10 +25,11 @@ import {
   Trash2,
   BarChart3,
   BookmarkCheck,
-  Plus
+  Plus,
+  Calendar
 } from 'lucide-react';
 import { Shift, ContractSettings, PayslipAnalysisResult, SavedPayslipRecord } from '../types';
-import { PAYSLIP_GLOSSARY_IT, GlossaryItem, anonymizePayslipText } from '../utils/privacyUtils';
+import { PAYSLIP_GLOSSARY_IT, GlossaryItem, anonymizePayslipText, parseMonthYearToIso } from '../utils/privacyUtils';
 import { AnnualPayslipChartsView } from './AnnualPayslipChartsView';
 import { RealPayslipPrivacyPreview } from './RealPayslipPrivacyPreview';
 
@@ -56,9 +57,26 @@ export const PayslipAnalyzerView: React.FC<PayslipAnalyzerViewProps> = ({
     return [];
   });
 
-  // Save to localStorage whenever savedRecords changes
+  // Load payslips from server DB on mount
+  useEffect(() => {
+    fetch('/api/database')
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData?.success && Array.isArray(resData.data?.payslips) && resData.data.payslips.length > 0) {
+          setSavedRecords(resData.data.payslips);
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  // Save to localStorage and server database whenever savedRecords changes
   useEffect(() => {
     localStorage.setItem('tl_saved_payslips', JSON.stringify(savedRecords));
+    fetch('/api/database', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payslips: savedRecords }),
+    }).catch(console.error);
   }, [savedRecords]);
 
   // Handler to add or update a record
@@ -110,6 +128,20 @@ export const PayslipAnalyzerView: React.FC<PayslipAnalyzerViewProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<PayslipAnalysisResult | null>(null);
+  const [saveTargetMonth, setSaveTargetMonth] = useState<string>(selectedMonth);
+  const [saveToastMsg, setSaveToastMsg] = useState<string | null>(null);
+
+  // Sync default saveTargetMonth if selectedMonth changes and no analysis result is present
+  useEffect(() => {
+    if (!analysisResult) {
+      setSaveTargetMonth(selectedMonth);
+    }
+  }, [selectedMonth, analysisResult]);
+
+  // Check if a record is already saved for the target save month
+  const existingTargetRecord = useMemo(() => {
+    return savedRecords.find((r) => r.monthIso === saveTargetMonth);
+  }, [savedRecords, saveTargetMonth]);
 
   // Differimento pagamenti straordinari (0, 1, or 2 months) - DEFAULT 2 MONTHS PRIOR AS REQUESTED
   const [overtimeLagMonths, setOvertimeLagMonths] = useState<number>(() => {
@@ -267,6 +299,8 @@ export const PayslipAnalyzerView: React.FC<PayslipAnalyzerViewProps> = ({
       }
 
       setAnalysisResult(json.data);
+      const detectedIso = json.data.monthIso || parseMonthYearToIso(json.data.monthYear, selectedMonth);
+      setSaveTargetMonth(detectedIso);
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err.message || 'Si è verificato un errore durante l\'analisi.');
@@ -674,19 +708,94 @@ export const PayslipAnalyzerView: React.FC<PayslipAnalyzerViewProps> = ({
           {analysisResult && (
             <div className="space-y-6 animate-in fade-in duration-300">
               
+              {/* Save Notification Toast */}
+              {saveToastMsg && (
+                <div className="bg-emerald-600 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between gap-3 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+                    <span>{saveToastMsg}</span>
+                  </div>
+                </div>
+              )}
+
               {/* General Summary */}
               <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    <span>Sintesi e Giudizio Generale Busta Paga</span>
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <span>Sintesi e Giudizio Generale Busta Paga</span>
+                </div>
+
+                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
+                  {analysisResult.generalSummary}
+                </p>
+              </div>
+
+              {/* TARGET MONTH DETECTION & SAVE CARD */}
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 rounded-2xl p-5 text-white border border-emerald-800/80 shadow-md space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 bg-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-emerald-200 flex flex-wrap items-center gap-2">
+                        <span>Mese di Competenza Cedolino Rilevato</span>
+                        {analysisResult.monthYear && (
+                          <span className="px-2.5 py-0.5 bg-emerald-900/80 border border-emerald-700/80 text-emerald-300 text-xs font-semibold rounded-full">
+                            {analysisResult.monthYear}
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-xs text-slate-300 mt-0.5">
+                        {analysisResult.monthYear 
+                          ? `✨ L'IA ha rilevato che questa busta paga appartiene a "${analysisResult.monthYear}".`
+                          : 'Seleziona il mese di riferimento per archiviare questo cedolino nello storico.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-xl border border-slate-800 shrink-0 self-start sm:self-auto">
+                    <label className="text-xs font-bold text-slate-300 shrink-0">Mese Storico:</label>
+                    <input
+                      type="month"
+                      value={saveTargetMonth}
+                      onChange={(e) => setSaveTargetMonth(e.target.value)}
+                      className="px-2.5 py-1.5 bg-slate-900 text-white rounded-lg border border-slate-700 font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {existingTargetRecord && (
+                  <div className="bg-amber-950/80 border border-amber-800/80 rounded-xl p-3 text-xs text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in">
+                    <div>
+                      <strong>Nota:</strong> Esiste già un cedolino salvato per <strong>{saveTargetMonth}</strong> (Netto: {existingTargetRecord.netAmount.toFixed(2)} €). Salvando questa nuova analisi lo aggiornerai automaticamente.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDeleteRecord(saveTargetMonth);
+                        setSaveToastMsg(`Cedolino di ${saveTargetMonth} eliminato dallo storico.`);
+                        setTimeout(() => setSaveToastMsg(null), 4000);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg shrink-0 cursor-pointer text-xs transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Elimina Vecchio Cedolino</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-emerald-800/50">
+                  <div className="text-xs text-emerald-300/80">
+                    Salva i dati estratti (Netto: <strong>{analysisResult.netAmount?.toFixed(2) || '1650.00'} €</strong>, Lordo: <strong>{analysisResult.grossAmount?.toFixed(2) || '2200.00'} €</strong>) nel registro annuale.
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => {
                       const recordToSave: SavedPayslipRecord = {
-                        id: selectedMonth,
-                        monthIso: selectedMonth,
+                        id: saveTargetMonth,
+                        monthIso: saveTargetMonth,
                         netAmount: analysisResult.netAmount || 1650,
                         grossAmount: analysisResult.grossAmount || 2200,
                         workedHours: analysisResult.totalWorkedHoursReported || appWorkedHours,
@@ -701,18 +810,18 @@ export const PayslipAnalyzerView: React.FC<PayslipAnalyzerViewProps> = ({
                         savedAt: new Date().toISOString(),
                       };
                       handleSaveRecord(recordToSave);
-                      setActiveTab('annual_charts');
+                      setSaveToastMsg(`✨ Cedolino salvato con successo nello storico per ${saveTargetMonth}!`);
+                      setTimeout(() => {
+                        setSaveToastMsg(null);
+                        setActiveTab('annual_charts');
+                      }, 1000);
                     }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs cursor-pointer transition-colors shrink-0"
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-extrabold rounded-xl text-xs shadow-md cursor-pointer transition-all shrink-0"
                   >
-                    <BookmarkCheck className="w-4 h-4" />
-                    <span>Salva Questo Cedolino nello Storico ({selectedMonth})</span>
+                    <BookmarkCheck className="w-4.5 h-4.5" />
+                    <span>Salva Cedolino in Storico ({saveTargetMonth})</span>
                   </button>
                 </div>
-
-                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium">
-                  {analysisResult.generalSummary}
-                </p>
               </div>
 
               {/* Cross-Check Discrepancy Card (Busta vs App TurniLavoro) */}

@@ -291,15 +291,10 @@ export function isFixedNationalHoliday(dateStr: string): boolean {
   return false;
 }
 
-// Italian national holidays (fixed holidays or Sunday)
+// Italian national holidays (fixed holidays)
 export function isItalianNationalHoliday(dateStr: string): boolean {
   if (!dateStr) return false;
-  if (isFixedNationalHoliday(dateStr)) return true;
-
-  // Check Sunday
-  const d = new Date(dateStr + 'T00:00:00');
-  if (isNaN(d.getTime())) return false;
-  return d.getDay() === 0;
+  return isFixedNationalHoliday(dateStr);
 }
 
 // Calculate hours worked between two HH:mm times considering break
@@ -377,14 +372,14 @@ export function isNightShift(startTime: string, endTime: string): boolean {
   return false;
 }
 
-// Format duration cleanly in hours and minutes (e.g. 40.25 -> "40h 15m", 38.75 -> "38h 45m", 38.5 -> "38h 30m", 38 -> "38h")
+// Format duration cleanly in hours and minutes (e.g. 6 -> "6h", 6.75 -> "h 6:45", 4.75 -> "h 4:45")
 export function formatHours(hours: number): string {
   if (!hours || isNaN(hours) || hours <= 0) return '0h';
   const totalMins = Math.round(hours * 60);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  return `h ${h}:${m < 10 ? '0' : ''}${m}`;
 }
 
 // Format overtime cleanly in quarters of an hour (15m notation, e.g. 0.25 -> "15m", 1.75 -> "1h 45m")
@@ -654,12 +649,13 @@ export function getWeeksForMonth(
     // Filter shifts falling in [mondayIso, sundayIso]
     const weekShifts = shifts.filter((s) => s.date >= mondayIso && s.date <= sundayIso);
 
-    // Count national holiday days in this week (each holiday reduces weekly goal by 6.5 hours)
+    // Count national holiday days in this week (each national holiday reduces weekly goal by 6.5 hours)
     let holidayCount = 0;
     for (let i = 0; i < 7; i++) {
       const d = new Date(currentMonday.getFullYear(), currentMonday.getMonth(), currentMonday.getDate() + i, 12, 0, 0);
       const dIso = formatDateToIso(d);
-      const isFestivo = isFixedNationalHoliday(dIso) || weekShifts.some((s) => s.date === dIso && !!s.isHoliday);
+      const isSunday = d.getDay() === 0;
+      const isFestivo = isFixedNationalHoliday(dIso) || (!isSunday && weekShifts.some((s) => s.date === dIso && !!s.isHoliday));
       if (isFestivo) {
         holidayCount++;
       }

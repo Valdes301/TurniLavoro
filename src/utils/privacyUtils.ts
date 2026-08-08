@@ -9,6 +9,53 @@ export interface GlossaryItem {
 }
 
 // Client-side privacy shield regexes & sanitizers
+export function parseMonthYearToIso(monthYearStr?: string, fallbackMonthIso?: string): string {
+  if (!monthYearStr) return fallbackMonthIso || '2026-01';
+  const str = monthYearStr.trim();
+  
+  // If already YYYY-MM format
+  if (/^\d{4}-\d{2}$/.test(str)) return str;
+
+  // Check MM/YYYY or MM-YYYY
+  const mmYyyyMatch = str.match(/\b(0[1-9]|1[0-2])[\/-](20\d{2})\b/);
+  if (mmYyyyMatch) {
+    return `${mmYyyyMatch[2]}-${mmYyyyMatch[1]}`;
+  }
+
+  // Check YYYY/MM or YYYY-MM
+  const yyyyMmMatch = str.match(/\b(20\d{2})[\/-](0[1-9]|1[0-2])\b/);
+  if (yyyyMmMatch) {
+    return `${yyyyMmMatch[1]}-${yyyyMmMatch[2]}`;
+  }
+
+  const yearMatch = str.match(/\b(20\d{2})\b/);
+  const year = yearMatch ? yearMatch[1] : (fallbackMonthIso ? fallbackMonthIso.split('-')[0] : '2026');
+
+  const lower = str.toLowerCase();
+  const monthsMap: Record<string, string> = {
+    'gen': '01', 'gennaio': '01', 'jan': '01', 'january': '01',
+    'feb': '02', 'febbraio': '02', 'february': '02',
+    'mar': '03', 'marzo': '03', 'march': '03',
+    'apr': '04', 'aprile': '04', 'april': '04',
+    'mag': '05', 'maggio': '05', 'may': '05',
+    'giu': '06', 'giugno': '06', 'june': '06',
+    'lug': '07', 'luglio': '07', 'july': '07',
+    'ago': '08', 'agosto': '08', 'aug': '08', 'august': '08',
+    'set': '09', 'settembre': '09', 'sep': '09', 'september': '09',
+    'ott': '10', 'ottobre': '10', 'oct': '10', 'october': '10',
+    'nov': '11', 'novembre': '11', 'november': '11',
+    'dic': '12', 'dicembre': '12', 'dec': '12', 'december': '12',
+  };
+
+  for (const [name, num] of Object.entries(monthsMap)) {
+    if (lower.includes(name)) {
+      return `${year}-${num}`;
+    }
+  }
+
+  return fallbackMonthIso || '2026-01';
+}
+
 export function anonymizePayslipText(
   rawText: string,
   userSurname?: string,

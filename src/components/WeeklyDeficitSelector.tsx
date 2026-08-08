@@ -50,7 +50,7 @@ export const WeeklyDeficitSelector: React.FC<WeeklyDeficitSelectorProps> = ({
     .join(', ');
 
   const nightCount = shifts.filter((s) => s.isNight || (s.category === 'work' && isNightShift(s.startTime, s.endTime))).length;
-  const holidayCount = shifts.filter((s) => !!s.isHoliday).length;
+  const holidayCount = week.holidayCount;
   const restCount = shifts.filter((s) => s.category === 'riposo').length;
   const totalBreakMins = shifts.reduce((acc, s) => acc + (s.breakMinutes || 0), 0);
   const breakHoursStr = totalBreakMins > 0 ? `${(totalBreakMins / 60).toFixed(1)}h` : null;

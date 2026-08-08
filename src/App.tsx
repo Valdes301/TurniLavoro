@@ -367,12 +367,30 @@ export default function App() {
   };
 
   const handleExportBackup = () => {
+    let payslips = [];
+    try {
+      const storedP = localStorage.getItem('tl_saved_payslips');
+      if (storedP) payslips = JSON.parse(storedP);
+    } catch (e) {
+      console.error(e);
+    }
+
+    let stores = [];
+    try {
+      const storedS = localStorage.getItem('tl_stores_v1');
+      if (storedS) stores = JSON.parse(storedS);
+    } catch (e) {
+      console.error(e);
+    }
+
     const backupObj = {
       shifts,
       contract,
       vacationSettings,
       presets,
-      version: '1.0',
+      payslips,
+      stores,
+      version: '2.0',
       exportedAt: new Date().toISOString(),
     };
     const jsonStr = JSON.stringify(backupObj, null, 2);
@@ -380,7 +398,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `backup_turnilavoro_${new Date().toISOString().split('T')[0]}.json`);
+    link.setAttribute('download', `backup_completo_turnilavoro_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -393,7 +411,28 @@ export default function App() {
       if (data.contract) setContract(data.contract);
       if (data.vacationSettings) setVacationSettings(data.vacationSettings);
       if (data.presets) setPresets(data.presets);
-      alert('Backup ripristinato con successo!');
+      if (data.payslips) {
+        localStorage.setItem('tl_saved_payslips', JSON.stringify(data.payslips));
+      }
+      if (data.stores) {
+        localStorage.setItem('tl_stores_v1', JSON.stringify(data.stores));
+      }
+
+      // Sync entire restored payload to server database.json
+      fetch('/api/database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shifts: data.shifts || shifts,
+          contract: data.contract || contract,
+          vacation: data.vacationSettings || vacationSettings,
+          presets: data.presets || presets,
+          payslips: data.payslips || [],
+        }),
+      }).catch(console.error);
+
+      alert('Backup completo ripristinato con successo! Tutti i turni, contratti e buste paga sono stati caricati.');
+      window.location.reload();
     } catch (e) {
       alert('File di backup non valido.');
     }

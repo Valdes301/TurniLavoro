@@ -71,7 +71,7 @@ export function getInitialShifts(): Shift[] {
       workedHours: 0,
       overtimeHours: 0,
       isNight: false,
-      isHoliday: true, // Domenica
+      isHoliday: false, // Domenica
       notes: 'Domenica di riposo',
     },
     {

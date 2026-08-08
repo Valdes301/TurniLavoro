@@ -204,12 +204,13 @@ async function startServer() {
 
   app.post('/api/database', (req, res) => {
     try {
-      const { shifts, contract, vacation, presets } = req.body;
+      const { shifts, contract, vacation, presets, payslips } = req.body;
       const payloadToUpdate: any = {};
       if (shifts !== undefined) payloadToUpdate.shifts = shifts;
       if (contract !== undefined) payloadToUpdate.contract = contract;
       if (vacation !== undefined) payloadToUpdate.vacation = vacation;
       if (presets !== undefined) payloadToUpdate.presets = presets;
+      if (payslips !== undefined) payloadToUpdate.payslips = payslips;
 
       const updatedDb = writeDbData(payloadToUpdate);
       res.json({ success: true, dbFilePath: DB_FILE_PATH, data: updatedDb });
@@ -609,8 +610,9 @@ Sei un esperto consulente del lavoro italiano specializzato nell'analisi e spieg
 IL TUO OBIETTIVO:
 1. Spiegare ogni singola voce della busta paga fornita in ITALIANO SEMPLICE E ACCESSIBILE, eliminando la burocrazia ed il gergo oscuro.
 2. Identificare gli importi principali: Lordo in Busta, Netto a Pagare, Trattenute INPS, IRPEF, eventuale TFR accantonato.
-3. Se sono fornite le ore registrate dall'app per quel mese (${JSON.stringify(appTotalsForMonth || {})}), confrontare i totali delle ore (ore ordinarie, straordinari, notturni, festivi) e segnalare eventuali discrepanze.
-4. RASSICURAZIONE SULLA PRIVACY: Il testo fornito è già stato anonimizzato dal browser. Concentrati unicamente sui numeri e sulle voci di contratto.
+3. ESTRAZIONE MESE E ANNO: Rileva con precisione il mese e l'anno di retribuzione/competenza specificato nel documento di busta paga (es. "Gennaio 2026", "Luglio 2026", "01/2026") e compila sia 'monthYear' (es. "Gennaio 2026") che 'monthIso' (es. "2026-01").
+4. Se sono fornite le ore registrate dall'app per quel mese (${JSON.stringify(appTotalsForMonth || {})}), confrontare i totali delle ore (ore ordinarie, straordinari, notturni, festivi) e segnalare eventuali discrepanze.
+5. RASSICURAZIONE SULLA PRIVACY: Il testo fornito è già stato anonimizzato dal browser. Concentrati unicamente sui numeri e sulle voci di contratto.
 
 CATEGORIE VOCI:
 - competenze: somme aggiunte al lordo (stipendio base, scatti, straordinari, indennità turno, festivi, superminimo)
@@ -659,7 +661,8 @@ Restituisci la risposta rigorosamente in JSON secondo lo schema specificato.
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              monthYear: { type: Type.STRING, description: 'Mese e anno della busta se rilevato (es. Luglio 2026)' },
+              monthYear: { type: Type.STRING, description: 'Mese e anno della busta se rilevato (es. Luglio 2026, Gennaio 2026)' },
+              monthIso: { type: Type.STRING, description: 'Mese e anno in formato ISO YYYY-MM se rilevato (es. 2026-01 per Gennaio 2026, 2026-07 per Luglio 2026)' },
               grossAmount: { type: Type.NUMBER, description: 'Totale retribuzione lorda o imponibile' },
               netAmount: { type: Type.NUMBER, description: 'Totale netto a pagare al dipendente' },
               totalWorkedHoursReported: { type: Type.NUMBER, description: 'Ore retribuite orarie in busta' },

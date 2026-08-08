@@ -55,6 +55,8 @@ export const AnnualPayslipChartsView: React.FC<AnnualPayslipChartsViewProps> = (
   const [selectedYear, setSelectedYear] = useState<string>('2026');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Partial<SavedPayslipRecord> | null>(null);
+  const [deleteConfirmIso, setDeleteConfirmIso] = useState<string | null>(null);
+  const [isClearYearModalOpen, setIsClearYearModalOpen] = useState(false);
 
   // Available years from records or defaults
   const availableYears = useMemo(() => {
@@ -484,9 +486,9 @@ export const AnnualPayslipChartsView: React.FC<AnnualPayslipChartsViewProps> = (
 
                       {d.isSaved && (
                         <button
-                          onClick={() => onDeleteRecord(d.monthIso)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg"
-                          title="Elimina cedolino"
+                          onClick={() => setDeleteConfirmIso(d.monthIso)}
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg cursor-pointer"
+                          title="Elimina cedolino da questo mese"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -669,6 +671,49 @@ export const AnnualPayslipChartsView: React.FC<AnnualPayslipChartsViewProps> = (
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteConfirmIso && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl max-w-md w-full space-y-4 text-xs">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2.5 bg-rose-100 dark:bg-rose-950/60 rounded-xl">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Eliminare il cedolino di {deleteConfirmIso}?
+                </h3>
+                <p className="text-[11px] text-slate-500">Azione irreversibile per lo storico</p>
+              </div>
+            </div>
+
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              Sei sicuro di voler rimuovere i dati salvati per il mese di <strong>{deleteConfirmIso}</strong>? I totali di netto, lordo, ore e trattenute per questo mese verranno azzerati nei grafici annuali.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmIso(null)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold hover:bg-slate-200 cursor-pointer"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteRecord(deleteConfirmIso);
+                  setDeleteConfirmIso(null);
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-2xs cursor-pointer"
+              >
+                Elimina Definitivamente
+              </button>
+            </div>
           </div>
         </div>
       )}
